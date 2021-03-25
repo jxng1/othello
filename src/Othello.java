@@ -226,7 +226,7 @@ public class Othello {
      *
      * @param row    row value
      * @param col    column value
-     * @param colour  whose move
+     * @param colour whose move
      * @param colDir the column vector
      * @param rowDir the row vector
      *               <p>
@@ -320,6 +320,7 @@ public class Othello {
     private boolean isValidMove(char turn, int row, int col) {
         char opponent = WHITE;
         int tempRow, tempCol;
+        boolean ret = false;
 
         if (turn == WHITE) {
             opponent = BLACK;
@@ -334,7 +335,9 @@ public class Othello {
                     tempRow++;
                     tempCol++;
                 } while (tempRow < BOARD_SIZE && tempCol < BOARD_SIZE && boardState[tempRow][tempCol] == opponent);
-                if (boardState[tempRow][tempCol] == turn) {
+                if (tempRow > 7 || tempCol > 7) {
+                    ret = false;
+                } else if (boardState[tempRow][tempCol] == turn) {
                     return true;
                 }
             }
@@ -344,7 +347,9 @@ public class Othello {
                 do {
                     tempRow++;
                 } while (tempRow < BOARD_SIZE && boardState[tempRow][col] == opponent);
-                if (boardState[tempRow][col] == turn) {
+                if (tempRow > 7) {
+                    ret = false;
+                } else if (boardState[tempRow][col] == turn) {
                     return true;
                 }
             }
@@ -354,7 +359,9 @@ public class Othello {
                 do {
                     tempCol++;
                 } while (tempCol < BOARD_SIZE && boardState[row][tempCol] == opponent);
-                if (boardState[row][tempCol] == turn) {
+                if (tempCol > 7) {
+                    ret = false;
+                } else if (boardState[row][tempCol] == turn) {
                     return true;
                 }
             }
@@ -364,7 +371,9 @@ public class Othello {
                 do {
                     tempCol--;
                 } while (tempCol - 1 > -1 && boardState[row][tempCol] == opponent);
-                if (boardState[row][tempCol] == turn) {
+                if (tempCol < 0) {
+                    ret = false;
+                } else if (boardState[row][tempCol] == turn) {
                     return true;
                 }
             }
@@ -376,7 +385,9 @@ public class Othello {
                     tempRow--;
                     tempCol--;
                 } while (tempRow - 1 > -1 && tempCol - 1 > -1 && boardState[tempRow][tempCol] == opponent);
-                if (boardState[tempRow][tempCol] == turn) {
+                if (tempRow < 0 || tempCol < 0) {
+                    ret = false;
+                } else if (boardState[tempRow][tempCol] == turn) {
                     return true;
                 }
             }
@@ -386,7 +397,9 @@ public class Othello {
                 do {
                     tempRow--;
                 } while (tempRow - 1 > -1 && boardState[tempRow][col] == opponent);
-                if (boardState[tempRow][col] == turn) {
+                if (tempRow < 0) {
+                    ret = false;
+                } else if (boardState[tempRow][col] == turn) {
                     return true;
                 }
             }
@@ -398,7 +411,9 @@ public class Othello {
                     tempRow--;
                     tempCol++;
                 } while (tempRow - 1 > -1 && tempCol < BOARD_SIZE && boardState[tempRow][tempCol] == opponent);
-                if (boardState[tempRow][tempCol] == turn) {
+                if (tempRow < 0 || tempCol > 7) {
+                    ret = false;
+                } else if (boardState[tempRow][tempCol] == turn) {
                     return true;
                 }
             }
@@ -410,12 +425,14 @@ public class Othello {
                     tempRow++;
                     tempCol--;
                 } while (tempRow < BOARD_SIZE && tempCol - 1 > -1 && boardState[tempRow][tempCol] == opponent);
-                if (boardState[tempRow][tempCol] == turn) {
+                if (tempRow > 7 || tempCol < 0) {
+                    ret = false;
+                } else if (boardState[tempRow][tempCol] == turn) {
                     return true;
                 }
             }
         }
-        return false;
+        return ret;
     }
 
     /**
