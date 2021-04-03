@@ -38,7 +38,6 @@ public class Tile extends JButton {
             g.setColor(Color.BLACK);
             g.drawOval(5, 5, this.getSize().width - 10, this.getSize().height - 10);
         }
-
     }
 
     public enum TileState {

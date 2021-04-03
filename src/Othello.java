@@ -58,6 +58,16 @@ public class Othello {
     public char move = WHITE;
 
     /**
+     * Main function, execution entry and terminates here.
+     */
+    public static void main(String[] args) {
+        Othello game = new Othello();
+
+        game.createGameGUI();
+        game.printBoardState();
+    }
+
+    /**
      * The constructor. The logical and physical boards are created and setup.
      * Then, the starting tiles are also set-up.
      * Any Listeners are added to the buttons that need them.
@@ -92,16 +102,6 @@ public class Othello {
 
         autoPlayWhiteButton.addActionListener(new GreedyMoveListener());
         autoPlayBlackButton.addActionListener(new GreedyMoveListener());
-    }
-
-    /**
-     * Main function, execution entry and terminates here.
-     */
-    public static void main(String[] args) {
-        Othello game = new Othello();
-
-        game.createGameGUI();
-        game.printBoardState();
     }
 
     /**
@@ -172,7 +172,15 @@ public class Othello {
      * If I were to work on this project more, I would definitely rework the logic to make the code run more efficiently.
      */
     public void makeMove(int row, int col, char turn) {
-        if (!isGameEnded() & anyMovesLeft()) { // game isn't ended and there are moves still
+        char opponent = WHITE;
+
+        if (turn == WHITE) {
+            opponent = BLACK;
+        }
+
+        if (isGameEnded() || (!anyMovesLeft(turn) && !anyMovesLeft(opponent))) { // no more moves left
+            endGame();
+        } else if (anyMovesLeft(turn)) { // current turn has moves
             if (!isValidMove(turn, row, col)) {
                 System.out.println("Invalid move!");
                 return;
@@ -202,20 +210,25 @@ public class Othello {
             checkDirection(row, col, turn, -1, 1);
             checkDirection(row, col, turn, -1, -1);
 
-            if (move == WHITE) {
-                move = BLACK;
-                whiteTurnLabel.setText("WHITE PLAYER - " + NO_TURN_MSG);
-                blackTurnLabel.setText("BLACK PLAYER - " + TURN_MSG);
-            } else {
-                move = WHITE;
-                whiteTurnLabel.setText("WHITE PLAYER - " + TURN_MSG);
-                blackTurnLabel.setText("BLACK PLAYER - " + NO_TURN_MSG);
-            }
+            setTurnMessage();
             printBoardState();
             whitePlayerFrame.repaint();
             blackPlayerFrame.repaint();
+        }
+    }
+
+    /**
+     * Sets turn message for after a move is made.
+     */
+    public void setTurnMessage() {
+        if (move == WHITE) {
+            move = BLACK;
+            whiteTurnLabel.setText("WHITE PLAYER - " + NO_TURN_MSG);
+            blackTurnLabel.setText("BLACK PLAYER - " + TURN_MSG);
         } else {
-            endGame();
+            move = WHITE;
+            whiteTurnLabel.setText("WHITE PLAYER - " + TURN_MSG);
+            blackTurnLabel.setText("BLACK PLAYER - " + NO_TURN_MSG);
         }
     }
 
@@ -438,10 +451,10 @@ public class Othello {
     /**
      * Any moves left just checks until there is a valid move on the board, could be optimised.
      */
-    private boolean anyMovesLeft() {
+    private boolean anyMovesLeft(char turn) {
         for (int i = 0; i < BOARD_SIZE; i++) {
             for (int j = 0; j < BOARD_SIZE; j++) {
-                if (isValidMove(move, i, j)) {
+                if (isValidMove(turn, i, j)) {
                     return true;
                 }
             }
@@ -471,9 +484,16 @@ public class Othello {
         }
 
         JOptionPane.showMessageDialog(null, gameEndMsg);
-        blackPlayerFrame.dispose();
-        whitePlayerFrame.dispose();
-        System.exit(0);
+        int response = JOptionPane.showConfirmDialog(null, "Do you want to play again?", "Play again?",
+                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+
+        if (response == JOptionPane.NO_OPTION || response == JOptionPane.CLOSED_OPTION) {
+            System.exit(0);
+        } else {
+            whitePlayerFrame.dispose();
+            blackPlayerFrame.dispose();
+            main(null);
+        }
     }
 
     /**
@@ -482,20 +502,28 @@ public class Othello {
     private class TileListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            for (int i = 0; i < BOARD_SIZE; i++) {
-                for (int j = 0; j < BOARD_SIZE; j++) {
-                    if (move == WHITE && whiteBoard[i][j] == e.getSource()) {
-                        System.out.println("Move made by white: " + i + " " + j);
-                        makeMove(i, j, WHITE);
+            if (anyMovesLeft(move)) {
+                for (int i = 0; i < BOARD_SIZE; i++) {
+                    for (int j = 0; j < BOARD_SIZE; j++) {
+                        if (move == WHITE && whiteBoard[i][j] == e.getSource()) {
+                            System.out.println("Move made by white: " + i + " " + j);
+                            makeMove(i, j, WHITE);
 
-                        break;
-                    } else if (move == BLACK && blackBoard[7 - i][7 - j] == e.getSource()) {
-                        System.out.println("Move made by black: " + i + " " + j);
-                        makeMove(i, j, BLACK);
+                            break;
+                        } else if (move == BLACK && blackBoard[7 - i][7 - j] == e.getSource()) {
+                            System.out.println("Move made by black: " + i + " " + j);
+                            makeMove(i, j, BLACK);
 
-                        break;
+                            break;
+                        }
                     }
                 }
+            } else {
+                System.out.println("Move skipped for current player as they have no moves available!");
+                setTurnMessage();
+                printBoardState();
+                whitePlayerFrame.repaint();
+                blackPlayerFrame.repaint();
             }
 
             if (isGameEnded()) {
@@ -514,7 +542,7 @@ public class Othello {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            if (move == WHITE && e.getSource() == autoPlayWhiteButton) {
+            if (move == WHITE && e.getSource() == autoPlayWhiteButton && anyMovesLeft(move)) {
                 long startTime = System.nanoTime(); // timer
 
                 int[] bestMove = gameAI.findBestMove(boardState, WHITE);
@@ -533,7 +561,7 @@ public class Othello {
 
                 long endTime = System.nanoTime(); // timer
                 System.out.println("Took " + (endTime - startTime) / 1e6 + "ms to make move.");
-            } else if (move == BLACK && e.getSource() == autoPlayBlackButton) {
+            } else if (move == BLACK && e.getSource() == autoPlayBlackButton && anyMovesLeft(move)) {
                 long startTime = System.nanoTime(); // timer
                 int[] bestMove = gameAI.findBestMove(boardState, BLACK);
 
@@ -552,6 +580,12 @@ public class Othello {
 
                 long endTime = System.nanoTime(); // timer
                 System.out.println("Took " + (endTime - startTime) / 1e6 + "ms to make move.");
+            } else {
+                System.out.println("Move skipped for current player as they have no moves available!");
+                setTurnMessage();
+                printBoardState();
+                whitePlayerFrame.repaint();
+                blackPlayerFrame.repaint();
             }
 
             if (isGameEnded()) {
