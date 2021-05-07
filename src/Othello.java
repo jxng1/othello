@@ -2,6 +2,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Locale;
 
 /**
  * Represents a game of Othello. Plays on a board of 8x8 tiles, white goes first in this case.
@@ -172,49 +173,63 @@ public class Othello {
      * If I were to work on this project more, I would definitely rework the logic to make the code run more efficiently.
      */
     public void makeMove(int row, int col, char turn) {
-        char opponent = WHITE;
+        if (!isValidMove(turn, row, col)) {
+            System.out.println("Invalid move!");
+            return;
+        }
 
+        // move taken
+        boardState[row][col] = turn;
         if (turn == WHITE) {
-            opponent = BLACK;
+            whiteBoard[row][col].setState(Tile.TileState.WHITE);
+            blackBoard[BOARD_SIZE - 1 - row][BOARD_SIZE - 1 - col].setState(Tile.TileState.WHITE);
+        } else if (turn == BLACK) {
+            whiteBoard[row][col].setState(Tile.TileState.BLACK);
+            blackBoard[BOARD_SIZE - 1 - row][BOARD_SIZE - 1 - col].setState(Tile.TileState.BLACK);
         }
 
-        if (isGameEnded() || (!anyMovesLeft(turn) && !anyMovesLeft(opponent))) { // no more moves left
-            endGame();
-        } else if (anyMovesLeft(turn)) { // current turn has moves
-            if (!isValidMove(turn, row, col)) {
-                System.out.println("Invalid move!");
-                return;
+        // above below
+        checkDirection(row, col, turn, 0, -1);
+        checkDirection(row, col, turn, 0, 1);
+
+        // left right
+        checkDirection(row, col, turn, 1, 0);
+        checkDirection(row, col, turn, -1, 0);
+
+        // diagonals
+        checkDirection(row, col, turn, 1, 1);
+        checkDirection(row, col, turn, 1, -1);
+        checkDirection(row, col, turn, -1, 1);
+        checkDirection(row, col, turn, -1, -1);
+
+        setTurnMessage();
+        printBoardState();
+        whitePlayerFrame.repaint();
+        blackPlayerFrame.repaint();
+    }
+
+    /**
+     * A method that finds uses the best move from the GFG to make a move, if it isn't found, then it finds the first available move to play.
+     */
+    public void aiMove(char turn) {
+        long startTime = System.nanoTime(); // timer
+
+        int[] bestMove = gameAI.findBestMove(boardState, turn);
+
+        if (bestMove[0] == -1 || bestMove[1] == -1) { // GFG failed, make random move instead
+            for (int i = 0; i < BOARD_SIZE; i++) {
+                for (int j = 0; j < BOARD_SIZE; j++) {
+                    makeMove(i, j, WHITE);
+                    System.out.println("Random move made by white AI: " + i + " " + j);
+                }
             }
-
-            // move taken
-            boardState[row][col] = turn;
-            if (turn == WHITE) {
-                whiteBoard[row][col].setState(Tile.TileState.WHITE);
-                blackBoard[BOARD_SIZE - 1 - row][BOARD_SIZE - 1 - col].setState(Tile.TileState.WHITE);
-            } else if (turn == BLACK) {
-                whiteBoard[row][col].setState(Tile.TileState.BLACK);
-                blackBoard[BOARD_SIZE - 1 - row][BOARD_SIZE - 1 - col].setState(Tile.TileState.BLACK);
-            }
-
-            // above below
-            checkDirection(row, col, turn, 0, -1);
-            checkDirection(row, col, turn, 0, 1);
-
-            // left right
-            checkDirection(row, col, turn, 1, 0);
-            checkDirection(row, col, turn, -1, 0);
-
-            // diagonals
-            checkDirection(row, col, turn, 1, 1);
-            checkDirection(row, col, turn, 1, -1);
-            checkDirection(row, col, turn, -1, 1);
-            checkDirection(row, col, turn, -1, -1);
-
-            setTurnMessage();
-            printBoardState();
-            whitePlayerFrame.repaint();
-            blackPlayerFrame.repaint();
+        } else {
+            makeMove(bestMove[0], bestMove[1], turn);
+            System.out.println("Best move made by " + String.valueOf(turn).toUpperCase() + " AI: " + bestMove[0] + " " + bestMove[1]);
         }
+
+        long endTime = System.nanoTime(); // timer
+        System.out.println("Took " + (endTime - startTime) / 1e6 + "ms to make move.");
     }
 
     /**
@@ -449,12 +464,13 @@ public class Othello {
     }
 
     /**
-     * Any moves left just checks until there is a valid move on the board, could be optimised.
+     * Checks every tile position to see if a tile still has a suitable move.
      */
-    private boolean anyMovesLeft(char turn) {
+    private boolean hasMovesLeft(char turn) {
         for (int i = 0; i < BOARD_SIZE; i++) {
             for (int j = 0; j < BOARD_SIZE; j++) {
                 if (isValidMove(turn, i, j)) {
+                    System.out.println("valid move at: " + i + ", " + j);
                     return true;
                 }
             }
@@ -502,7 +518,13 @@ public class Othello {
     private class TileListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            if (anyMovesLeft(move)) {
+            if (!hasMovesLeft(move)) {
+                System.out.println("Move skipped for current player as they have no moves available!");
+                setTurnMessage();
+                printBoardState();
+                whitePlayerFrame.repaint();
+                blackPlayerFrame.repaint();
+            } else {
                 for (int i = 0; i < BOARD_SIZE; i++) {
                     for (int j = 0; j < BOARD_SIZE; j++) {
                         if (move == WHITE && whiteBoard[i][j] == e.getSource()) {
@@ -518,23 +540,16 @@ public class Othello {
                         }
                     }
                 }
-            } else {
-                System.out.println("Move skipped for current player as they have no moves available!");
-                setTurnMessage();
-                printBoardState();
-                whitePlayerFrame.repaint();
-                blackPlayerFrame.repaint();
             }
 
-            if (isGameEnded()) {
+            if (isGameEnded() || !hasMovesLeft(WHITE) && !hasMovesLeft(BLACK)) {
                 endGame();
             }
         }
-
     }
 
     /**
-     * My game play AI, using minimax without alpha/beta pruning, which would be an optimisation.
+     * My gameplay AI, using minimax without alpha/beta pruning, which would be an optimisation.
      * I've timed how long it takes for a move to be found and it is displayed each time the AI is chosen to play.
      * If a best move isn't found, a random one is chosen instead.
      */
@@ -542,57 +557,24 @@ public class Othello {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            if (move == WHITE && e.getSource() == autoPlayWhiteButton && anyMovesLeft(move)) {
-                long startTime = System.nanoTime(); // timer
-
-                int[] bestMove = gameAI.findBestMove(boardState, WHITE);
-
-                if (bestMove[0] == -1 || bestMove[1] == -1) { // GFG failed, make random move instead
-                    for (int i = 0; i < BOARD_SIZE; i++) {
-                        for (int j = 0; j < BOARD_SIZE; j++) {
-                            makeMove(i, j, WHITE);
-                            System.out.println("Random move made by white AI: " + i + " " + j);
-                        }
-                    }
-                } else {
-                    makeMove(bestMove[0], bestMove[1], WHITE);
-                    System.out.println("Best move made by white AI: " + bestMove[0] + " " + bestMove[1]);
-                }
-
-                long endTime = System.nanoTime(); // timer
-                System.out.println("Took " + (endTime - startTime) / 1e6 + "ms to make move.");
-            } else if (move == BLACK && e.getSource() == autoPlayBlackButton && anyMovesLeft(move)) {
-                long startTime = System.nanoTime(); // timer
-                int[] bestMove = gameAI.findBestMove(boardState, BLACK);
-
-
-                if (bestMove[0] == -1 || bestMove[1] == -1) { // GFG failed, make random move instead
-                    for (int i = 0; i < BOARD_SIZE; i++) {
-                        for (int j = 0; j < BOARD_SIZE; j++) {
-                            makeMove(i, j, BLACK);
-                            System.out.println("Random move made by black AI: " + i + " " + j);
-                        }
-                    }
-                } else {
-                    makeMove(bestMove[0], bestMove[1], BLACK);
-                    System.out.println("Best move made by black AI: " + bestMove[0] + " " + bestMove[1]);
-                }
-
-                long endTime = System.nanoTime(); // timer
-                System.out.println("Took " + (endTime - startTime) / 1e6 + "ms to make move.");
-            } else {
+            if (!hasMovesLeft(move)) {
                 System.out.println("Move skipped for current player as they have no moves available!");
                 setTurnMessage();
                 printBoardState();
                 whitePlayerFrame.repaint();
                 blackPlayerFrame.repaint();
+            } else {
+                if (move == WHITE && e.getSource() == autoPlayWhiteButton) {
+                    aiMove(WHITE);
+                } else if (move == BLACK && e.getSource() == autoPlayBlackButton) {
+                    aiMove(BLACK);
+                }
             }
 
-            if (isGameEnded()) {
+            if (isGameEnded() || !hasMovesLeft(WHITE) && !hasMovesLeft(BLACK)) {
                 endGame();
             }
         }
-
     }
 
     /**
