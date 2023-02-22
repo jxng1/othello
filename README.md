@@ -1,5 +1,5 @@
 # othello
-Othello CW done in Java for COMP1009
+Othello CW done in Java for COMP1009 | UoN
 
 - Detailed explanation of code in the files themselves.
 
